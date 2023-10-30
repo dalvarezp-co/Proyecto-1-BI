@@ -1,12 +1,39 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+from textblob import TextBlob
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer, HashingVectorizer
 import proyecto_grupo13
 from pandas_profiling import ProfileReport
 import plotly.express as px
 
-#profile = ProfileReport(proyecto_grupo13.textos)
-#profile.to_file("profile_report.html")
+# Cargar un modelo de lenguaje de spaCy (o cualquier otro modelo de procesamiento de lenguaje natural que desees)
+#nlp = spacy.load("es_core_news_sm")
+
+# Verificar si el usuario ha ingresado texto
+#if user_input:
+    # Procesar el texto ingresado con spaCy
+    #doc = nlp(user_input)
+    
+    # Realizar una clasificación de texto utilizando TextBlob (puedes usar tu propio modelo de clasificación)
+    #analysis = TextBlob(user_input)
+    #sentiment = analysis.sentiment.polarity
+
+    # Mostrar el texto procesado
+    #st.write("Texto procesado:")
+    #st.write(doc.text)
+
+    # Mostrar la clasificación de texto
+    #st.write("Sentimiento del texto:")
+    #if sentiment > 0:
+        #st.write("Positivo")
+    #elif sentiment < 0:
+        #st.write("Negativo")
+    #else:
+        #st.write("Neutro")
+
 
 # Carga los datos desde Jupyter Notebook
 # Reemplaza 'data.csv' con la ruta de tu archivo de datos
@@ -22,16 +49,50 @@ df = pd.DataFrame(dataGraph)
 # Título de la aplicación
 st.title('Modelo Analítico Grupo 13')
 
+# Crear un campo de escritura en Streamlit
+user_input = st.text_area("Escriba su texto aquí:")
+
+# Agregar un botón para clasificar el texto
+if st.button("Clasificar"):
+    if user_input:
+        # Llamar a la función de clasificación desde proyecto_grupo13
+        nb_classificador = proyecto_grupo13.nb_classifier
+        pipeline = Pipeline([
+            ('text_preprocessor', proyecto_grupo13.TextPreprocessor2()),
+            ('vectorizer',CountVectorizer())
+        ])
+        textoPreprocesado = pipeline.fit(user_input)
+        textoPreprocesado = pipeline.transform(user_input)
+
+        predicciones = nb_classificador.predict(textoPreprocesado)
+        dataFrameResp = pd.DataFrame({"Texto" : user_input, "Predicción" : predicciones})
+        
+        # Mostrar el resultado
+        st.write("Resultado de la clasificación:")
+        st.write(dataFrameResp)
+
+# Crear un campo de carga de archivos en Streamlit
+uploaded_file = st.file_uploader("Cargar archivo de Excel", type=["xlsx"])
+
+if uploaded_file is not None:
+    nb_clasificador = proyecto_grupo13.nb_classifier
+
+
+    # Procesar el archivo cargado
+    textos = pd.read_excel(uploaded_file)
+    xRTest = textos["Textos_espanol"]
+    preproceso = proyecto_grupo13.preprocessing_pipeline.fit(xRTest)
+    preproceso = proyecto_grupo13.preprocessing_pipeline.transform(xRTest)
+    predict = nb_clasificador.predict(preproceso)
+    dataFrameResultado = pd.DataFrame({"Textos_espanol" : xRTest, "Predicciones" : predict})
+    st.write("Resultado de la clasificación con el mejor modelo:")
+    st.write(dataFrameResultado)
+
 # Muestra tus datos en una tabla
 st.write('**Datos:**', data)
 
 st.title('Preparación de Datos')
-## Pandas profiling
-#st.header('Data Profiling con pandas profiling')
-#st.write("Información general sobre los datos:")
-#with open("profile_report.html", 'r', encoding='utf-8') as file:
-#    st.markdown(file.read())
-#st.text('')
+
 st.write('**Limpieza de datos:**')
 st.markdown("""
     - Remover caracteres no ASCII
